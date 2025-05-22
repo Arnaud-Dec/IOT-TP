@@ -304,6 +304,11 @@ int ssd1306::display_line(uint8_t line, uint8_t col, const char* text)
     return len;
 }
 
+void ssd1306::clear()
+{
+    buffer_set(gddram,0);
+}
+
 /* Set whole display to given value */
 int ssd1306::buffer_set(uint8_t *gddram, uint8_t val)
 {
