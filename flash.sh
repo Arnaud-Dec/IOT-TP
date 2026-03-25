@@ -1,0 +1,1 @@
+cp build/bbc-microbit-classic-gcc/source/microbit-samples-combined.hex  D:\
