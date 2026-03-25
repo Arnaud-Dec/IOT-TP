@@ -1,33 +1,64 @@
+/*
+GND : Ground
++3.3V : +3.3 Volt
+SDA : Bidirectional Serial Data for I2C bus.
+SCL : Clock for I2C bus.
+*/
+
 #include "MicroBit.h"
+#include "bme280.h"
+#include "tsl256x.h"
+#include "veml6070.h"
 
 MicroBit uBit;
+MicroBitI2C i2c(I2C_SDA0,I2C_SCL0);
 
-int main() {
+int main()
+{
+    // Initialise the micro:bit runtime.
     uBit.init();
 
-    uBit.serial.baud(115200);
+    bme280 bme(&uBit,&i2c);
+    uint32_t pressure = 0;
+    int32_t temp = 0;
+    uint16_t humidite = 0;
 
-    while(1) {
+    tsl256x tsl(&uBit,&i2c);
+    uint16_t comb =0;
+    uint16_t ir = 0;
+    uint32_t lux = 0;
 
-        int temp = uBit.thermometer.getTemperature();
+    veml6070 veml(&uBit,&i2c);
+    uint16_t uv = 0;
 
-        // Accéléromètre (X, Y, Z)
-        int accX = uBit.accelerometer.getX();
-        int accY = uBit.accelerometer.getY();
-        int accZ = uBit.accelerometer.getZ();
+    while(true)
+    {
+        //bme280
+        bme.sensor_read(&pressure, &temp, &humidite);
+        int tmp = bme.compensate_temperature(temp);
+        int pres = bme.compensate_pressure(pressure)/100;
+        int hum = bme.compensate_humidity(humidite);
+        ManagedString display = "Temp:" + ManagedString(tmp/100) + "." + (tmp > 0 ? ManagedString(tmp%100): ManagedString((-tmp)%100))+" C";
+        uBit.display.scroll(display.toCharArray());
+        display = "Humi:" + ManagedString(hum/100) + "." + ManagedString(tmp%100)+" rH";
+        uBit.display.scroll(display.toCharArray());
+        display = "Pres:" + ManagedString(pres)+" hPa";
+        uBit.display.scroll(display.toCharArray());
 
-        // Boussole
-        int heading = uBit.compass.heading();
+        //tsl2561
+        tsl.sensor_read(&comb, &ir, &lux);
+        display = "Lux:" + ManagedString((int)lux);
+        uBit.display.scroll(display.toCharArray());
 
-        // Niveau de lumière
-        int light = uBit.display.readLightLevel();
+        //VEML6070
+        veml.sensor_read(&uv);
+        display = "UV:" + ManagedString(uv);
+        uBit.display.scroll(display.toCharArray());
 
-        // Envoi formaté sur le port série
-        uBit.serial.printf("Temp: %d C | Acc: X=%d Y=%d Z=%d | Boussole: %d deg | Lumiere: %d\r\n",
-            temp, accX, accY, accZ, heading, light);
-
-        uBit.sleep(500);
+        uBit.sleep(2000);
     }
 
     release_fiber();
+
 }
+
