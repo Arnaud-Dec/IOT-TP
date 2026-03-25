@@ -25,36 +25,50 @@
 
 #include "MicroBit.h"
 #include "ssd1306.h"
+#include "bme280.h"
 
 MicroBit uBit;
 MicroBitI2C i2c(I2C_SDA0,I2C_SCL0);
 MicroBitPin P0(MICROBIT_ID_IO_P0, MICROBIT_PIN_P0, PIN_CAPABILITY_DIGITAL_OUT);
 
 int getTemp(){
-   
-    int t = uBit.thermometer.getTemperature();
-    return t;
-    
+    return uBit.thermometer.getTemperature();
 }
-
 
 int main()
 {
-    // Initialise the micro:bit runtime.
     uBit.init();
+    
+    uBit.sleep(200); 
 
     ssd1306 screen(&uBit, &i2c, &P0);
+    
+    uBit.sleep(500); 
+
+    bme280 bme(&uBit,&i2c);
+
+    uint32_t pressure = 0;
+    int32_t temp = 0;
+    uint16_t humidite = 0;
+
     while(true)
     {
         screen.display_line(0,0,"DECOURT");
         screen.display_line(1,0,"DEMARIA");
 
-        ManagedString display = "Temp:" + ManagedString(getTemp());
-        screen.display_line(2,0,display.toCharArray());
+        ManagedString display1 = ManagedString("Temp proc:") + ManagedString(getTemp());
+        screen.display_line(2,0, (char*)display1.toCharArray());
+
+        // Lecture
+        bme.sensor_read(&pressure, &temp, &humidite);
+        int tmp = bme.compensate_temperature(temp);
+        
+        ManagedString display2 = "Temp Capteur:" + ManagedString(tmp/100) + "." + (tmp > 0 ? ManagedString(tmp%100): ManagedString((-tmp)%100))+" C";
+        screen.display_line(3,0, (char*)display2.toCharArray());
+
         screen.update_screen();
         uBit.sleep(1000);
     }
 
     release_fiber();
-
 }
